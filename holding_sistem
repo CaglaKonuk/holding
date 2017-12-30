@@ -1,0 +1,380 @@
+import sqlite3
+class Kisi:
+    def __init__(self, isim, soyisim, departman, maas, adres, no):
+        self.isim = isim
+        self.soyisim = soyisim
+        self.departman = departman
+        self.maas = maas
+        self.adres = adres
+        self.no = no
+
+    def __str__(self):
+        return "İsim :{}\nSoyisim:{}\nDepartman:{}\nMaas:{}\nAdres:{}\nNo:{}".format(self.isim, self.soyisim,
+                                                                                     self.departman, self.maas,
+                                                                                     self.adres, self.no)
+class Baglanti:
+
+    def __init__(self):
+        self.baglanti = None
+        self.imlec = None
+        self.baglanti_olustur()
+
+    def baglanti_olustur(self):
+
+        self.baglanti = sqlite3.connect("Holding.db")
+        self.imlec = self.baglanti.cursor()
+        tablo = "CREATE TABLE IF NOT EXISTS kisiler(İsim TEXT,Soyisim TEXT,Departman TEXT,Maas INT,Adres TEXT,No INT)"
+        self.imlec.execute(tablo)
+        self.baglanti.commit()
+
+    def baglanti_kes(self):
+        self.baglanti.close()
+
+    def kisileri_goster(self):
+        goster = "SELECT *FROM kisiler"
+        self.imlec.execute(goster)
+        kisiler = self.imlec.fetchall()
+        listem = []
+
+        for i in kisiler:
+            listem.append(Kisi(i[0], i[1], i[2], i[3], i[4], i[5]))
+        return listem
+    def kisi_sorgula(self, no):
+        sorgu = "SELECT * FROM kisiler WHERE no =?"
+        self.imlec.execute(sorgu, (no,))
+        kisiler = self.imlec.fetchall()
+        if len(kisiler) == 0:
+            return
+
+        else:
+            kisi = Kisi(kisiler[0][0], kisiler[0][1], kisiler[0][2], kisiler[0][3], kisiler[0][4], kisiler[0][5])
+            return kisi
+
+    def kisi_ekle(self, kisi):
+        ekle = "INSERT INTO kisiler VALUES(?,?,?,?,?,?)"
+        self.imlec.execute(ekle, (kisi.isim, kisi.soyisim, kisi.departman, kisi.maas, kisi.adres, kisi.no))
+        self.baglanti.commit()
+
+    def kisi_sil(self, isim):
+
+        sorgu = "DELETE FROM kisiler WHERE no = ?"
+        self.imlec.execute(sorgu, (isim,))
+        self.baglanti.commit()
+
+    def maas_zam(self, no):
+
+        sorgu = "SELECT * FROM kisiler WHERE no = ?"
+        self.imlec.execute(sorgu, (no,))
+
+        kisiler = self.imlec.fetchall()
+
+        if len(kisiler) == 0:
+            print("Böyle bir çalışan yok")
+
+        else:
+            maas = kisiler[0][3]
+            maas += 500
+            sorgu2 = "UPDATE kisiler SET maas = ? WHERE no = ?"
+            self.imlec.execute(sorgu2, (maas, no))
+            self.baglanti.commit()
+baglanti = Baglanti()
+def main():
+    print("""
+    **************************************
+   DEUZEM HOLDİNG PERSONEL SİSTEMİ
+
+    İŞLEMLER ;
+    1.KİŞİ EKLE 
+    2.KİŞİ SORGULAMA
+    3.KİŞİLERİ GÖSTER
+    4.KİŞİ SİLME
+    5.MAAŞ ZAM YAP
+    Çıkmak için 'q' ye basın
+    **************************************
+    """)
+    islem = input("Bir işlem seçin :")
+
+    if islem == "q":
+        exit()
+
+    elif islem == "1":
+        isim = input("İsim :")
+        soyisim = input("Soyisim :")
+        departman = input("Departman :")
+        maas = int(input("Maas:"))
+        adres = input("Adres :")
+        no = int(input("No :"))
+        yeni_kisi = Kisi(isim, soyisim, departman, maas, adres, no)
+        print("Kişi Eklendi")
+        baglanti.kisi_ekle(yeni_kisi)
+
+    elif islem == "2":
+        no = input("Sorgulamak istediğiniz kişinin No'sunu girin :")
+        cevap = baglanti.kisi_sorgula(no)
+        if cevap:
+            print(str(cevap))
+        else:
+            print("Aranılan Kişi Sistemde Bulunmamaktadır..")
+
+    elif islem == "3":
+        cevap = baglanti.kisileri_goster()
+        if cevap:
+            for i in cevap:
+                print(str(i))
+        else:
+            print("Sistemde kayıtlı kimse yok")
+    elif islem == "4":
+        no = int(input("Silmek istediğiniz kişinin No' sunu girin :"))
+        tekrar = input("Kişiyi silmek istediğinizden emin misiniz(E/H):")
+
+        if tekrar == "E":
+            print("kişi Sistemden Silindi")
+            baglanti.kisi_sil(no)
+
+    elif islem == "5":
+        no = int(input("Maaş zam yapmak istediğiniz kişinin No' sunu girin :"))
+        print("Zam yapıldı.")
+        baglanti.maas_zam(no)
+    else:
+        print("Geçersiz işlem")
+from PyQt4.QtGui import *
+from PyQt4.QtCore import *
+import sys
+
+def kutu(text):
+    kutu = QMessageBox()
+    kutu.setText(text)
+    return kutu.exec_()
+class EklemeEkrani(QDialog):
+    def __init__(self, parent=None):
+        super(EklemeEkrani, self).__init__(parent)
+        izgara = QGridLayout()
+        izgara.addWidget(QLabel('KİŞİ EKLE '), 0, 0)
+
+        self.isim_etiket = QLabel("İsim")
+        self.isim_girdi = QLineEdit()
+        self.soyisim_etiket = QLabel("Soyisim")
+        self.soyisim_girdi = QLineEdit()
+        self.departman_etiket = QLabel("Departman")
+        self.departman_girdi = QLineEdit()
+        self.maas_etiket = QLabel("Maas")
+        self.maas_girdi = QLineEdit()
+        self.adres_etiket = QLabel("Adres")
+        self.adres_girdi = QLineEdit()
+        self.no_etiket = QLabel("No")
+        self.no_girdi = QLineEdit()
+
+        self.maas_girdi.setValidator(QIntValidator())
+        self.no_girdi.setValidator(QIntValidator())
+
+        izgara.addWidget(self.isim_etiket, 1, 0)
+        izgara.addWidget(self.isim_girdi, 1, 1)
+        izgara.addWidget(self.soyisim_etiket, 2, 0)
+        izgara.addWidget(self.soyisim_girdi, 2, 1)
+        izgara.addWidget(self.departman_etiket, 3, 0)
+        izgara.addWidget(self.departman_girdi, 3, 1)
+        izgara.addWidget(self.maas_etiket, 4, 0)
+        izgara.addWidget(self.maas_girdi, 4, 1)
+        izgara.addWidget(self.adres_etiket, 5, 0)
+        izgara.addWidget(self.adres_girdi, 5, 1)
+        izgara.addWidget(self.no_etiket, 6, 0)
+        izgara.addWidget(self.no_girdi, 6, 1)
+
+        onay_tusu = QPushButton('Tamam')
+        self.connect(onay_tusu, SIGNAL('pressed()'), self.uygula)
+        izgara.addWidget(onay_tusu, 8, 0)
+        self.setLayout(izgara)
+
+    def uygula(self):
+        isim = self.isim_girdi.text()
+        soyisim = self.soyisim_girdi.text()
+        departman = self.departman_girdi.text()
+        maas = int(self.maas_girdi.text())
+        adres = self.adres_girdi.text()
+        no = int(self.no_girdi.text())
+
+        yeni_kisi = Kisi(isim, soyisim, departman, maas, adres, no)
+        baglanti.kisi_ekle(yeni_kisi)
+
+        kutu("Kişi Eklendi")
+
+        self.hide()
+
+        self.isim_girdi.clear()
+        self.soyisim_girdi.clear()
+        self.departman_girdi.clear()
+        self.maas_girdi.clear()
+        self.adres_girdi.clear()
+        self.no_girdi.clear()
+class SorgulamaEkrani(QDialog):
+    def __init__(self, parent=None):
+        super(SorgulamaEkrani, self).__init__(parent)
+        izgara = QGridLayout()
+        izgara.addWidget(QLabel('KİŞİ SORGULAMA'), 0, 0)
+
+        self.etiket = QLabel("Sorgulamak istediğiniz kişinin No'sunu girin :")
+        self.girdi = QLineEdit()
+
+        self.girdi.setValidator(QIntValidator())
+
+        izgara.addWidget(self.etiket, 1, 0)
+        izgara.addWidget(self.girdi, 1, 1)
+
+        onay_tusu = QPushButton('Tamam')
+        self.connect(onay_tusu, SIGNAL('pressed()'), self.uygula)
+        izgara.addWidget(onay_tusu, 8, 0)
+        self.setLayout(izgara)
+
+    def uygula(self):
+        no = int(self.girdi.text())
+        cevap = baglanti.kisi_sorgula(no)
+
+        if cevap:
+            kutu(str(cevap))
+        else:
+            kutu("Aranılan Kişi Sistemde Bulunmamaktadır..")
+
+        self.hide()
+
+        self.girdi.clear()
+class GostermeEkrani(QDialog):
+    def __init__(self, parent=None):
+        super(GostermeEkrani, self).__init__(parent)
+        izgara = QGridLayout()
+        izgara.addWidget(QLabel('KİŞİLERİ GÖSTER'), 0, 0)
+        izgara.addWidget(QLabel('Görmek için Tamama tıklayınız.'), 1, 0)
+
+        onay_tusu = QPushButton('Tamam')
+        self.connect(onay_tusu, SIGNAL('pressed()'), self.uygula)
+        izgara.addWidget(onay_tusu, 8, 0)
+        self.setLayout(izgara)
+
+    def uygula(self):
+        cevap = baglanti.kisileri_goster()
+
+        if cevap:
+            gosterilecek = ""
+            for i in cevap:
+                gosterilecek += str(i)
+                gosterilecek += "\n--\n"
+            kutu(gosterilecek)
+        else:
+            kutu("Sistemde kayıtlı kimse yok")
+
+        self.hide()
+class SilmeEkrani(QDialog):
+    def __init__(self, parent=None):
+        super(SilmeEkrani, self).__init__(parent)
+        izgara = QGridLayout()
+        izgara.addWidget(QLabel('KİŞİ SİLME'), 0, 0)
+
+        self.etiket = QLabel("Silmek istediğiniz kişinin No' sunu girin :")
+        self.girdi = QLineEdit()
+        self.girdi.setValidator(QIntValidator())
+
+        izgara.addWidget(self.etiket, 1, 0)
+        izgara.addWidget(self.girdi, 1, 1)
+
+        onay_tusu = QPushButton('Tamam')
+        self.connect(onay_tusu, SIGNAL('pressed()'), self.uygula)
+        izgara.addWidget(onay_tusu, 1, 0)
+        self.setLayout(izgara)
+
+    def uygula(self):
+        no = int(self.girdi.text())
+
+        sorgu = QMessageBox.question(self, "", "Kişiyi silmek istediğinizden emin misiniz:", QMessageBox.Yes,
+                                     QMessageBox.No)
+        if sorgu == QMessageBox.Yes:
+            baglanti.kisi_sil(no)
+            kutu("kişi Sistemden Silindi")
+        else:
+            kutu("İşlem İptal Edildi")
+
+        self.girdi.clear()
+        self.hide()
+class ZamEkrani(QDialog):
+    def __init__(self, parent=None):
+        super(ZamEkrani, self).__init__(parent)
+        izgara = QGridLayout()
+        izgara.addWidget(QLabel('MAAŞ ZAM YAP'), 0, 0)
+
+        self.etiket = QLabel("Maaş zam yapmak istediğiniz kişinin No' sunu girin :")
+        self.girdi = QLineEdit()
+        self.girdi.setValidator(QIntValidator())
+
+        izgara.addWidget(self.etiket, 1, 0)
+        izgara.addWidget(self.girdi, 1, 1)
+
+        onay_tusu = QPushButton('Tamam')
+        self.connect(onay_tusu, SIGNAL('pressed()'), self.uygula)
+        izgara.addWidget(onay_tusu, 1, 0)
+        self.setLayout(izgara)
+
+    def uygula(self):
+        no = int(self.girdi.text())
+
+        baglanti.maas_zam(no)
+        kutu("Zam yapıldı.")
+
+        self.girdi.clear()
+        self.hide()
+class AnaEkran(QDialog):
+    def __init__(self, parent=None):
+        super(AnaEkran, self).__init__(parent)
+        izgara = QGridLayout()
+        self.ekleme_ekrani = EklemeEkrani(self)
+        self.sorgulama_ekrani = SorgulamaEkrani(self)
+        self.gosterme_ekrani = GostermeEkrani(self)
+        self.silme_ekrani = SilmeEkrani(self)
+        self.zam_ekrani = ZamEkrani(self)
+
+        ekleme_tusu = QPushButton('KİŞİ EKLE ')
+        sorgulama_tusu = QPushButton('KİŞİ SORGULAMA')
+        gosterme_tusu = QPushButton('KİŞİLERİ GÖSTER')
+        silme_tusu = QPushButton('KİŞİ SİLME')
+        zam_tusu = QPushButton('MAAŞ ZAM YAP')
+        cikis_tusu = QPushButton('ÇIKIŞ')
+
+        self.connect(ekleme_tusu, SIGNAL('pressed()'), self.ekleme_goster)
+        self.connect(sorgulama_tusu, SIGNAL('pressed()'), self.sorgulama_goster)
+        self.connect(gosterme_tusu, SIGNAL('pressed()'), self.gosterme_goster)
+        self.connect(silme_tusu, SIGNAL('pressed()'), self.silme_goster)
+        self.connect(zam_tusu, SIGNAL('pressed()'), self.zam_goster)
+        self.connect(cikis_tusu, SIGNAL('pressed()'), sys.exit)
+
+        izgara.addWidget(QLabel('Lütfen işlem seçiniz'), 0, 0)
+        izgara.addWidget(ekleme_tusu, 1, 0)
+        izgara.addWidget(sorgulama_tusu, 2, 0)
+        izgara.addWidget(gosterme_tusu, 3, 0)
+        izgara.addWidget(silme_tusu, 4, 0)
+        izgara.addWidget(zam_tusu, 5, 0)
+        izgara.addWidget(QLabel(" "), 6, 0)
+        izgara.addWidget(cikis_tusu, 7, 0)
+        self.setLayout(izgara)
+
+    def ekleme_goster(self):
+        self.ekleme_ekrani.show()
+
+    def sorgulama_goster(self):
+        self.sorgulama_ekrani.show()
+
+    def gosterme_goster(self):
+        self.gosterme_ekrani.show()
+
+    def silme_goster(self):
+        self.silme_ekrani.show()
+
+    def zam_goster(self):
+        self.zam_ekrani.show()
+def main_qt():
+    uyg = QApplication([])
+    pencere = AnaEkran()
+    pencere.show()
+    uyg.exec_()
+if input("Qt mi Terminal mi? (q/T):").lower() == "q":
+    gercek_main = main_qt
+else:
+    gercek_main = main
+while True:
+    gercek_main()
